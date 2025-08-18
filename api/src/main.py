@@ -35,8 +35,8 @@ def missing_token_callback(error):
     print(f"DEBUG: Missing token error: {error}, auth={request.headers.get('Authorization')}")
     return {'message': f'Authorization token required: {error}'}, 401
 
-# Enable CORS for all routes
-CORS(app)
+# Enable CORS for all routes - simplified approach
+CORS(app, origins='*', allow_headers=['Content-Type', 'Authorization'], methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'])
 
 app.register_blueprint(auth_bp, url_prefix='/api')
 app.register_blueprint(user_bp, url_prefix='/api')

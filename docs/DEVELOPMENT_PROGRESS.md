@@ -133,10 +133,11 @@ The project now has a solid foundation with:
 - **Complete documentation** for setup, development, and deployment
 
 ## Next Immediate Steps 
-1. Add "Delete Exercise" and "Delete Set" in Active Workout UI and test end-to-end.
-2. Remove the `difficulty` column from the backend database (migration) and clean API responses.
-3. Seed the database using the Free Exercise DB importer (one-time per environment).
-4. Add a rest timer between sets and support set types (warmup, dropset, superset).
+1. **Deploy using split-project approach**: Create separate Vercel projects for frontend and backend
+2. Add "Delete Exercise" and "Delete Set" in Active Workout UI and test end-to-end.
+3. Remove the `difficulty` column from the backend database (migration) and clean API responses.
+4. Seed the database using the Free Exercise DB importer (one-time per environment).
+5. Add a rest timer between sets and support set types (warmup, dropset, superset).
 
 ## How to Get Started 
 
@@ -166,3 +167,38 @@ The project now has a solid foundation with:
    - Note: This will remove ALL tables including users. Re-register a user after running.
 
 The development environment is now ready for your girlfriend to start building her magical girl gym tracker! 
+
+## Deployment Notes (Vercel) - UPDATED
+
+### Previous Issues (Resolved)
+- __Root Cause__: Monorepo approach with single `vercel.json` caused conflicts between framework detection
+- __Problem__: Root `GET /` returned 404 while API routes worked fine
+- __Multiple Failed Attempts__: builds[] array, Build Output API, complex routing strategies
+
+### Current Solution: Split Projects (Recommended)
+- __Approach__: Separate Vercel projects instead of monorepo configuration
+- __Frontend Project__:
+  - Root Directory: `frontend/magical-girl-gym-tracker-frontend`
+  - Framework: Vite (auto-detected)
+  - Configuration: `frontend/magical-girl-gym-tracker-frontend/vercel.json`
+  - SPA routing with proper asset caching
+- __Backend Project__:
+  - Root Directory: `api`
+  - Source code location: `api/src` (backend relocated under `api/` for deployment)
+  - Runtime: Python 3.9 (auto-detected)
+  - Configuration: `api/vercel.json`
+  - Serverless functions for all API endpoints
+  - Recent tweaks: `api/vercel.json` explicitly defines `builds` with `@vercel/python` for `index.py` and rewrites `/(.*)` to `index.py` so `/api/*` hits Flask. Added `api/requirements.txt` to ensure dependencies install during build.
+- __Environment Variables__:
+  - Frontend: `VITE_API_URL=https://backend-project-name.vercel.app` (no trailing slash)
+  - Backend: `DATABASE_URL` for Neon database connection
+- __Benefits__:
+  - Proper framework detection per project
+  - Independent deployments and scaling
+  - Simplified configuration files
+  - No routing conflicts
+- __Files Created__:
+  - `frontend/magical-girl-gym-tracker-frontend/vercel.json`
+  - `api/vercel.json`
+  - Updated `frontend/magical-girl-gym-tracker-frontend/.env.example`
+  - Removed root `vercel.json` to prevent conflicts

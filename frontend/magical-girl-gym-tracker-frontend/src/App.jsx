@@ -11,7 +11,7 @@ import magicalman from './assets/magicalman.png'
 import twogirlsflexing from './assets/twogirlsflexing.png'
 
 // API configuration with production support
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000')
 
 function App() {
   const [exercises, setExercises] = useState([])
@@ -1120,7 +1120,7 @@ function App() {
               <Button
                 onClick={activeWorkout ? handleEndWorkout : handleStartWorkout}
                 disabled={starting}
-                className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
+                className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 mb-4"
               >
                 <Star className="h-4 w-4 mr-2" />
                 {activeWorkout ? 'End Workout' : 'Start Workout'}
@@ -1300,6 +1300,7 @@ function App() {
                       <Button size="sm" variant="outline" onClick={() => workoutImageUploadRef.current?.click()} className="border-pink-200">Upload Image</Button>
                       <input type="file" accept="image/*" multiple ref={workoutImageUploadRef} onChange={(e)=>{ addFilesToBoard(e.target.files, activeWorkout?.id); e.target.value=''}} className="hidden" />
                       <Button size="sm" variant="outline" onClick={() => promptAndAddImage(activeWorkout?.id)} className="border-pink-200">Add Image by URL</Button>
+                      <Button size="sm" onClick={handleEndWorkout} className="bg-red-500 hover:bg-red-600 text-white">End Workout</Button>
                     </div>
                   </div>
                   <CardDescription>

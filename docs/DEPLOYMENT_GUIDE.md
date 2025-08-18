@@ -55,22 +55,29 @@ The deployment uses these configuration files:
 {
   "version": 2,
   "builds": [
+    { "src": "api/index.py", "use": "@vercel/python" },
     {
       "src": "frontend/magical-girl-gym-tracker-frontend/package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
-    },
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python"
+      "config": {
+        "distDir": "dist",
+        "installCommand": "corepack enable && corepack prepare pnpm@10.4.1 --activate && pnpm install --frozen-lockfile",
+        "buildCommand": "pnpm run build && rm -rf ../../.vercel/output/static && mkdir -p ../../.vercel/output/static && cp -r dist/* ../../.vercel/output/static/"
+      }
     }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "api/index.py" },
-    { "src": "/(.*)", "dest": "frontend/magical-girl-gym-tracker-frontend/dist/$1" }
+    { "src": "/api/(.*)", "dest": "/api/index.py" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
 ```
+
+Notes:
+- Python serverless functions reside under `api/` (e.g., `api/index.py`) and are auto-detected by Vercel.
+- The SPA fallback ensures client-side routes resolve to `index.html`.
+- The static build uses a temporary Build Output API fallback to place files into `.vercel/output/static` to guarantee root serving.
 
 ### `requirements.txt` (root level)
 ```

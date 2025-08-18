@@ -222,6 +222,33 @@ This comprehensive TODO list outlines all the features and tasks needed to build
 ~~7. Frontend deployment readiness: VITE_API_URL environment variable configuration.~~ ✅ **COMPLETED**
 8. Add a rest timer between sets.
 
+### Deployment (Vercel) - Split Project Approach
+- [x] **FIXED**: Split into separate Vercel projects instead of monorepo approach
+  - **Frontend Project**: Deploy `frontend/magical-girl-gym-tracker-frontend/` as separate Vite project
+    - Framework auto-detection works properly
+    - Root directory: `frontend/magical-girl-gym-tracker-frontend`
+    - Uses `vercel.json` in frontend directory for SPA routing
+  - **Backend Project**: Deploy `api/` as separate Python serverless project
+    - Framework auto-detection works properly
+    - Root directory: `api`
+    - Uses `vercel.json` in api directory for Python runtime
+  - [ ] **Setup Steps**:
+  1. Create frontend Vercel project: Root Directory = `frontend/magical-girl-gym-tracker-frontend`
+  2. Create backend Vercel project: Root Directory = `api`
+  3. Set `VITE_API_URL` environment variable in frontend project to backend project URL
+  4. Deploy both projects separately
+  5. Ensure `api/requirements.txt` exists with backend dependencies
+  6. Ensure `api/vercel.json` includes builds + routes (map `/(.*)` -> `index.py`)
+  - [ ] **Environment Variables**:
+    - Frontend: Set `VITE_API_URL=https://your-backend-project.vercel.app` (no trailing slash)
+    - Backend: Set `DATABASE_URL` for Neon database connection
+  - [ ] **Post-deploy checks**:
+    - Frontend: `GET /` loads index.html and `/assets/*` serve properly
+    - Backend: `GET /api/exercises` returns JSON (200)
+    - Backend responses include `Access-Control-Allow-Origin` (either `*` or your frontend domain)
+    - Preflight: `OPTIONS /api/exercises` responds 200/204 and includes `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers`
+    - Cross-origin requests work between frontend and backend projects
+
 ## Development Guidelines
 
 - **Magical Girl First**: Every feature should incorporate the magical girl theme
@@ -237,13 +264,3 @@ This comprehensive TODO list outlines all the features and tasks needed to build
 - 💎 **LOW PRIORITY**: Nice-to-have features for future updates
 
 This TODO list will be updated as development progresses and new requirements emerge.
-
----
-
-## Cross-Project Notes: Table Tennis League & ELO App
-
-- [x] Backend DB path now configurable via `DATABASE_PATH`; ensures directory exists; logs active DB file. (`backend/src/models/database.js`)
-- [x] Switched admin seeding to `bcryptjs` for Alpine/Docker compatibility. (`database.js`)
-- [x] CORS hardened to use `FRONTEND_URL` (comma-separated) and dynamic origin with credentials. (`backend/src/app.js`)
-- [x] `docker-compose.yml` updated to set `FRONTEND_URL=http://localhost,http://localhost:5173`.
-- [ ] Verify local dev: set env `FRONTEND_URL=http://localhost:5173`, run backend and Vite, test `/health` and `/api/auth/login` with admin/admin123.
