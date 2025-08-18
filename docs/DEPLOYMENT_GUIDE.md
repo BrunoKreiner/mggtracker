@@ -1,55 +1,87 @@
 # Deployment Guide
 
-This guide covers deploying the Magical Girl Gym Tracker to production using Render (backend) and Vercel (frontend).
+This guide covers deploying the Magical Girl Gym Tracker to production using **Vercel only** (both frontend and backend).
 
 ## Prerequisites
 
-- Render account (free tier available)
 - Vercel account (free tier available)
 - GitHub repository with your code
 
-## Backend Deployment (Render)
+## Full-Stack Deployment (Vercel)
 
-### 1. Create Web Service on Render
+### 1. Deploy to Vercel
 
-1. Connect your GitHub repository
-2. Select the backend directory: `backend/magical-girl-gym-tracker-backend`
-3. Configure the service:
-   - **Name**: `magical-girl-gym-tracker-backend`
-   - **Environment**: `Python 3`
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn -w 4 -b 0.0.0.0:$PORT src.main:app`
+1. Connect your GitHub repository to Vercel
+2. Vercel will auto-detect the configuration from `vercel.json`
+3. The deployment includes:
+   - **Frontend**: React app built with Vite
+   - **Backend**: Flask API as serverless functions
 
-### 2. Environment Variables
+### 2. Add Vercel Postgres Database
 
-Set these in Render's Environment tab:
+1. In your Vercel dashboard, go to **Storage**
+2. Create a **Postgres** database (free tier: 60 hours compute/month)
+3. This automatically provides environment variables:
+   - `POSTGRES_URL`
+   - `POSTGRES_PRISMA_URL` 
+   - `POSTGRES_URL_NON_POOLING`
+
+### 3. Environment Variables
+
+Set these in Vercel's Environment Variables:
 
 ```
-DATABASE_URL=<auto-provided-postgres-url>
 SECRET_KEY=<generate-random-32-char-string>
 JWT_SECRET_KEY=<generate-random-32-char-string>
 FLASK_ENV=production
 ```
 
-**Important**: Render automatically provides `DATABASE_URL` when you add a PostgreSQL database. The app will use this instead of SQLite.
-
-### 3. Add PostgreSQL Database
-
-1. In your Render dashboard, create a new PostgreSQL database
-2. Link it to your web service
-3. The `DATABASE_URL` will be automatically set
+**Note**: `POSTGRES_URL` is automatically provided by Vercel Postgres.
 
 ### 4. Initial Database Seeding
 
-After first deployment, seed the database via Render's Shell:
+After first deployment, seed the database via Vercel's Functions tab or locally:
 
 ```bash
-python seed_if_empty.py
+python backend/magical-girl-gym-tracker-backend/seed_if_empty.py
 ```
 
-This is safe to run multiple times - it only imports if the database is empty.
+## Configuration Files
 
-## Frontend Deployment (Vercel)
+The deployment uses these configuration files:
+
+### `vercel.json`
+```json
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "frontend/magical-girl-gym-tracker-frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": { "distDir": "dist" }
+    },
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "api/index.py" },
+    { "src": "/(.*)", "dest": "frontend/magical-girl-gym-tracker-frontend/dist/$1" }
+  ]
+}
+```
+
+### `requirements.txt` (root level)
+```
+Flask==3.1.1
+Flask-JWT-Extended==4.6.0
+Flask-SQLAlchemy==3.1.1
+Flask-CORS==6.0.0
+psycopg2-binary==2.9.9
+bcrypt==4.0.1
+requests==2.32.3
+```
 
 ### 1. Deploy to Vercel
 

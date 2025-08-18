@@ -12,8 +12,8 @@ from src.routes.exercise import exercise_bp
 from src.routes.auth import auth_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
-app.config['SECRET_KEY'] = 'asdf#FGSgvasgf$5$WGT'
-app.config['JWT_SECRET_KEY'] = 'jwt-secret-string-change-in-production'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
+app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-string-change-in-production')
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False  # For development - tokens don't expire
 
 # Initialize JWT
@@ -43,15 +43,21 @@ app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(exercise_bp, url_prefix='/api')
 
 # Database configuration with production support
-database_url = os.environ.get('DATABASE_URL')
+database_url = os.environ.get('POSTGRES_URL') or os.environ.get('DATABASE_URL')
 if database_url:
     # Fix postgres:// -> postgresql:// for SQLAlchemy compatibility
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    print(f"Using PostgreSQL database: {database_url[:50]}...")
 else:
     # Development fallback to SQLite
-    app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'database', 'app.db')}"
+    sqlite_path = os.path.join(os.path.dirname(__file__), 'database', 'app.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{sqlite_path}"
+    print(f"Using SQLite database: {sqlite_path}")
+    
+    # Ensure database directory exists for SQLite
+    os.makedirs(os.path.dirname(sqlite_path), exist_ok=True)
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)

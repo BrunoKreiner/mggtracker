@@ -166,3 +166,10 @@ The project now has a solid foundation with:
    - Note: This will remove ALL tables including users. Re-register a user after running.
 
 The development environment is now ready for your girlfriend to start building her magical girl gym tracker! 
+
+## External Project Log: Table Tennis League App (2025-08-18 12:40 CET)
+
+- Backend: database path now configurable via `DATABASE_PATH` (directory auto-created), `.env` loaded for CLI, and admin seeding uses `bcryptjs`.
+- CORS: hardened to use `FRONTEND_URL` (supports comma-separated origins) with credentials; default reflects origin in dev.
+- Docker: `docker-compose.yml` updated to set `FRONTEND_URL=http://localhost,http://localhost:5173`. Backend exposes `/health`; API base under `/api`.
+- Frontend: axios base URL pulled from `VITE_API_URL` (also passed in Docker build arg).
