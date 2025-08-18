@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+
+# Environments
+.env
+.env.*
+.venv/
+venv/
+ENV/
+
+# OS / Editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Coverage / pytest
+.coverage
+.python-version
+.pytest_cache/
+
+# Build
+build/
+dist/
+
+# Vercel local output
+.vercel/
+
+# Local databases
+*.sqlite
+*.db
+api/src/database/
+
+# Cache
+**/__pycache__/

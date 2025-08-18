@@ -202,3 +202,11 @@ The development environment is now ready for your girlfriend to start building h
   - `api/vercel.json`
   - Updated `frontend/magical-girl-gym-tracker-frontend/.env.example`
   - Removed root `vercel.json` to prevent conflicts
+
+### Git History Cleanup (2025-08-19)
+- Squashed the last 21 noisy "debug Vercel" commits into a single clean commit summarizing:
+  - Split vercel.json into frontend and backend projects
+  - Moved backend under `api/src` and adjusted `api/index.py`
+  - Ensured `api/requirements.txt` and routes config
+  - Updated docs and CORS notes
+  - Created backup branch `backup/pre-squash-20250819-0009` for safety

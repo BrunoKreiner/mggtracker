@@ -249,6 +249,10 @@ This comprehensive TODO list outlines all the features and tasks needed to build
     - Preflight: `OPTIONS /api/exercises` responds 200/204 and includes `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers`
     - Cross-origin requests work between frontend and backend projects
 
+### Repo Hygiene
+- [x] Squash noisy Vercel debug commits (last 21) into a single clean commit; keep backup branch
+- [x] Squash Vercel debug commit history.
+
 ## Development Guidelines
 
 - **Magical Girl First**: Every feature should incorporate the magical girl theme
