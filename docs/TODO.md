@@ -240,12 +240,10 @@ This TODO list will be updated as development progresses and new requirements em
 
 ---
 
-## External Project TODO: Table Tennis League App (2025-08-18)
+## Cross-Project Notes: Table Tennis League & ELO App
 
-- [x] Backend DB path via `DATABASE_PATH` + auto-create directory; load `.env`; log DB path
-- [x] Switch admin seeding to `bcryptjs` (avoid native builds on Alpine)
-- [x] Harden CORS with `FRONTEND_URL` (comma-separated) and credentials
-- [x] Update `docker-compose.yml` to include `FRONTEND_URL=http://localhost,http://localhost:5173`
-- [ ] Build and run Docker stack; verify backend `/health`
-- [ ] Admin login (admin/admin123) and verify `/api/auth/me`
-- [ ] Frontend smoke: load http://localhost/ and verify API connectivity
+- [x] Backend DB path now configurable via `DATABASE_PATH`; ensures directory exists; logs active DB file. (`backend/src/models/database.js`)
+- [x] Switched admin seeding to `bcryptjs` for Alpine/Docker compatibility. (`database.js`)
+- [x] CORS hardened to use `FRONTEND_URL` (comma-separated) and dynamic origin with credentials. (`backend/src/app.js`)
+- [x] `docker-compose.yml` updated to set `FRONTEND_URL=http://localhost,http://localhost:5173`.
+- [ ] Verify local dev: set env `FRONTEND_URL=http://localhost:5173`, run backend and Vite, test `/health` and `/api/auth/login` with admin/admin123.
