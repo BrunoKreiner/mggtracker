@@ -17,14 +17,14 @@ This guide covers deploying the Magical Girl Gym Tracker to production using **V
    - **Frontend**: React app built with Vite
    - **Backend**: Flask API as serverless functions
 
-### 2. Add Vercel Postgres Database
+### 2. Add Neon Postgres Database
 
 1. In your Vercel dashboard, go to **Storage**
-2. Create a **Postgres** database (free tier: 60 hours compute/month)
+2. Create a **Neon** database (free tier: 0.5GB storage, no time limits)
 3. This automatically provides environment variables:
-   - `POSTGRES_URL`
-   - `POSTGRES_PRISMA_URL` 
-   - `POSTGRES_URL_NON_POOLING`
+   - `DATABASE_URL` (recommended for most uses)
+   - `DATABASE_URL_UNPOOLED` (for direct connections)
+   - `PGHOST`, `PGDATABASE`, etc. (connection parameters)
 
 ### 3. Environment Variables
 
@@ -36,7 +36,7 @@ JWT_SECRET_KEY=<generate-random-32-char-string>
 FLASK_ENV=production
 ```
 
-**Note**: `POSTGRES_URL` is automatically provided by Vercel Postgres.
+**Note**: `DATABASE_URL` is automatically provided by Neon Postgres.
 
 ### 4. Initial Database Seeding
 
