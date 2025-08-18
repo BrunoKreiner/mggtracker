@@ -43,7 +43,7 @@ app.register_blueprint(user_bp, url_prefix='/api')
 app.register_blueprint(exercise_bp, url_prefix='/api')
 
 # Database configuration with production support
-database_url = os.environ.get('POSTGRES_URL') or os.environ.get('DATABASE_URL')
+database_url = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL')
 if database_url:
     # Fix postgres:// -> postgresql:// for SQLAlchemy compatibility
     if database_url.startswith('postgres://'):

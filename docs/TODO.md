@@ -237,3 +237,15 @@ This comprehensive TODO list outlines all the features and tasks needed to build
 - 💎 **LOW PRIORITY**: Nice-to-have features for future updates
 
 This TODO list will be updated as development progresses and new requirements emerge.
+
+---
+
+## External Project TODO: Table Tennis League App (2025-08-18)
+
+- [x] Backend DB path via `DATABASE_PATH` + auto-create directory; load `.env`; log DB path
+- [x] Switch admin seeding to `bcryptjs` (avoid native builds on Alpine)
+- [x] Harden CORS with `FRONTEND_URL` (comma-separated) and credentials
+- [x] Update `docker-compose.yml` to include `FRONTEND_URL=http://localhost,http://localhost:5173`
+- [ ] Build and run Docker stack; verify backend `/health`
+- [ ] Admin login (admin/admin123) and verify `/api/auth/me`
+- [ ] Frontend smoke: load http://localhost/ and verify API connectivity
