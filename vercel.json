@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.9"
+    }
+  },
   "builds": [
     {
       "src": "frontend/magical-girl-gym-tracker-frontend/package.json",
@@ -7,16 +12,12 @@
       "config": {
         "distDir": "dist"
       }
-    },
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "api/index.py"
+      "dest": "/api/index.py"
     },
     {
       "src": "/(.*)",
