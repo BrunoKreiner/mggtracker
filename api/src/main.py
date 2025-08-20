@@ -12,8 +12,9 @@ from src.routes.exercise import exercise_bp
 from src.routes.auth import auth_bp
 
 app = Flask(__name__, static_folder=os.path.join(os.path.dirname(__file__), 'static'))
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'asdf#FGSgvasgf$5$WGT')
-app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-string-change-in-production')
+# Use defaults if env vars are unset or empty strings
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'asdf#FGSgvasgf$5$WGT'
+app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY') or 'jwt-secret-string-change-in-production'
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = False  # For development - tokens don't expire
 
 # Initialize JWT
@@ -67,7 +68,9 @@ from src.models.exercise import Exercise, WorkoutSession, WorkoutExercise, Exerc
 
 with app.app_context():
     db.create_all()
-    
+
+
+
     # Distinguish between local SQLite and production Postgres/Neon
     using_postgres = bool(database_url)
 

@@ -247,6 +247,48 @@ This comprehensive TODO list outlines all the features and tasks needed to build
     - Preflight: `OPTIONS /api/exercises` responds 200/204 and includes `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers`
     - Cross-origin requests work between frontend and backend projects
 
+## Local Docker Dev (rewired to `api/`) — 2025-08-20
+
+- [x] Update `docker-compose.yml` to build backend from `api/` instead of legacy `backend/`
+- [x] Add `api/Dockerfile` to run Flask app via `index.py`
+- [ ] Create a root `.env` file (not committed) with:
+  ```env
+  DATABASE_URL=postgresql://<user>:<pass>@<neon-host>/<db>?sslmode=require
+  AUTO_SEED_IF_EMPTY=false
+  SECRET_KEY=dev-secret
+  JWT_SECRET_KEY=dev-jwt
+  ```
+- [ ] Start stack:
+  ```powershell
+  docker compose up --build
+  ```
+- [ ] Verify backend connects to Neon in logs: `Using PostgreSQL database:` in `api/src/main.py` boot logs
+- [ ] Verify exercise count:
+  ```powershell
+  (Invoke-RestMethod http://localhost:5000/api/exercises).Count
+  ```
+  Expect ~800+ if Neon has been seeded. If you see ~10, you are likely on SQLite — ensure `.env` with `DATABASE_URL` is present and restart containers.
+- [ ] Frontend API base URL:
+  - Dev default: `frontend/src/App.jsx` uses `http://localhost:5000` when no `VITE_API_URL` is set
+  - Optional: create `frontend/.env.local` with `VITE_API_URL=http://localhost:5000` if you want explicit config
+
+## Test on Vercel (no Docker) — 2025-08-20
+
+- [ ] Backend project (root `api/` in Vercel):
+  - Set Environment Variables (Production/Preview):
+    - `DATABASE_URL=postgresql://<user>:<pass>@<neon-host>/<db>?sslmode=require`
+    - `AUTO_SEED_IF_EMPTY=true` (temporarily, only if Exercise table is empty)
+    - `JWT_SECRET_KEY=<some-secret>`
+    - `SECRET_KEY=<some-secret>`
+  - Redeploy. On first cold start, seeding runs if empty.
+  - Verify: open `https://<backend>.vercel.app/api/exercises` and check response count (should be ~800+ after seed).
+  - Then set `AUTO_SEED_IF_EMPTY=false` and redeploy to avoid repeated checks.
+
+- [ ] Frontend project (root `frontend/magical-girl-gym-tracker-frontend/`):
+  - Set `VITE_API_URL=https://<backend>.vercel.app`
+  - Redeploy frontend.
+  - Verify in browser dev console: `Loaded N exercises` where N ~ 800+.
+
 ### Repo Hygiene
 - [x] Squash noisy Vercel debug commits (last 21) into a single clean commit; keep backup branch
 - [x] Squash Vercel debug commit history.

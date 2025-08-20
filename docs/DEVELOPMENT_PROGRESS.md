@@ -239,6 +239,20 @@ The development environment is now ready for your girlfriend to start building h
   - Updated `frontend/magical-girl-gym-tracker-frontend/.env.example`
   - Removed root `vercel.json` to prevent conflicts
 
+### New (2025-08-20): Local Docker Dev rewired to `api/`
+- Docker now builds and runs the backend from `api/` instead of the legacy `backend/` folder.
+- `docker-compose.yml` updated to point backend service at `./api` and pass env vars `DATABASE_URL`, `AUTO_SEED_IF_EMPTY`, `SECRET_KEY`, `JWT_SECRET_KEY`.
+- Added `api/Dockerfile` that installs `api/requirements.txt` and runs `index.py` (Flask) on port 5000.
+- Verification steps:
+  1) Create root `.env` (not committed) with:
+     - `DATABASE_URL=postgresql://...` (Neon; include `sslmode=require`)
+     - `AUTO_SEED_IF_EMPTY=false` (set `true` only when Neon is empty)
+     - `SECRET_KEY`, `JWT_SECRET_KEY` for local dev
+  2) `docker compose up --build`
+  3) Confirm logs show `Using PostgreSQL database:` from `api/src/main.py`.
+  4) `GET http://localhost:5000/api/exercises` -> expect ~800+ if Neon seeded; if ~10, you're on SQLite (missing `DATABASE_URL`).
+  5) Frontend at `http://localhost:3000` fetches from `http://localhost:5000` by default (`src/App.jsx`). CORS is enabled in backend.
+
 ### New (2025-08-20): Neon Production Auto-Seeding
 - Backend logic updated in `api/src/main.py`:
   - Default user and 10 basic exercises now seed only when using local SQLite (no DATABASE_URL) to avoid polluting production data.

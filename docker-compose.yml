@@ -17,15 +17,19 @@ services:
 
   backend:
     build:
-      context: ./backend/magical-girl-gym-tracker-backend
+      context: ./api
       dockerfile: Dockerfile
     ports:
       - "5000:5000"
     volumes:
-      - ./backend/magical-girl-gym-tracker-backend:/app
+      - ./api:/app
     environment:
       - FLASK_ENV=development
       - FLASK_DEBUG=1
+      - DATABASE_URL=${DATABASE_URL}
+      - AUTO_SEED_IF_EMPTY=${AUTO_SEED_IF_EMPTY:-false}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-jwt}
 
   android-build:
     build:
