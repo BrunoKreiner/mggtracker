@@ -50,12 +50,14 @@ function App() {
   const [authError, setAuthError] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
   const persistTimerRef = useRef(null)
-  const particleSeq = useRef(0)
-  const [particles, setParticles] = useState([])
   const imageUploadRef = useRef(null)
   const workoutImageUploadRef = useRef(null)
   const modalImageUploadRef = useRef(null)
   const profilePicInputRef = useRef(null)
+
+  // Rest timer per workout-exercise: { [weId]: { remaining: number, total: number, running: boolean } }
+  const [restTimers, setRestTimers] = useState({})
+  const restIntervalRef = useRef(null)
 
   // Helper to build a user-scoped localStorage key
   const keyFor = (base) => {
@@ -67,13 +69,13 @@ function App() {
   // Crazy decora: timeframe, glitter particles, and calculator inputs
   const [timeframeDays, setTimeframeDays] = useState(30)
   const [glitterCount, setGlitterCount] = useState(48)
-  const [glitterEnabled, setGlitterEnabled] = useState(true)
+  const [customCursor, setCustomCursor] = useState('default') // 'default', 'heart', 'star'
+  const [scanlineOverlay, setScanlineOverlay] = useState(false)
   const [calc, setCalc] = useState({ weight: '', reps: '', bw: '', proteinFactor: 1.6 })
   const [pastFilterDays, setPastFilterDays] = useState(30)
   const [pastShown, setPastShown] = useState(5)
   const [exercisesShown, setExercisesShown] = useState(9)
   const [exerciseQuery, setExerciseQuery] = useState('')
-  const glitterPrefLoaded = useRef(false)
 
   useEffect(() => {
     // Load persisted auth and glitter prefs on startup
@@ -88,8 +90,6 @@ function App() {
         setShowAuthModal(true)
       }
       
-      const se = localStorage.getItem('glitterEnabled')
-      if (se !== null) setGlitterEnabled(se === 'true')
       const sc = localStorage.getItem('glitterCount')
       if (sc !== null) setGlitterCount(Number(sc))
 
@@ -113,8 +113,21 @@ function App() {
       if (serverPic) setProfilePic(serverPic)
       else if (scopedPic) setProfilePic(scopedPic)
       else if (legacyPic) { setProfilePic(legacyPic); localStorage.setItem(picKey, legacyPic) }
+
+      // Removed marquee and chaos mode preference loading
+
+      // Load cursor and scanline preferences
+      const cursorKey = keyFor('customCursor')
+      const savedCursor = localStorage.getItem(cursorKey)
+      if (savedCursor) setCustomCursor(savedCursor)
+
+      const scanlineKey = keyFor('scanlineOverlay')
+      const savedScanline = localStorage.getItem(scanlineKey)
+      if (savedScanline !== null) {
+        const prefersReduced3 = window.matchMedia('(prefers-reduced-motion: reduce)')
+        setScanlineOverlay(savedScanline === 'true' && !prefersReduced3?.matches)
+      }
     } catch {}
-    glitterPrefLoaded.current = true
     setImageLoaded(true)
   }, [])
 
@@ -158,15 +171,28 @@ function App() {
   }, [activeWorkout, authToken])
 
   useEffect(() => {
-    // Load persisted glitter preferences and profile picture
+    // Persist glitter count and profile picture
     try {
-      localStorage.setItem('glitterEnabled', String(glitterEnabled))
       localStorage.setItem('glitterCount', String(glitterCount))
       const picKey = keyFor('profilePic')
       if (profilePic) localStorage.setItem(picKey, profilePic)
       else localStorage.removeItem(picKey)
     } catch {}
-  }, [glitterEnabled, glitterCount, profilePic])
+  }, [glitterCount, profilePic])
+
+  // Removed marquee and chaos mode persistence effects
+
+  useEffect(() => {
+    // Persist cursor and scanline preferences per user
+    try {
+      const cursorKey = keyFor('customCursor')
+      localStorage.setItem(cursorKey, customCursor)
+      const scanlineKey = keyFor('scanlineOverlay')
+      localStorage.setItem(scanlineKey, String(scanlineOverlay))
+    } catch {}
+  }, [customCursor, scanlineOverlay, user?.id, user?.username])
+
+  // Removed particle state cleanup tied to Chaos Mode
 
   useEffect(() => {
     // Persist image board to localStorage with error surfacing
@@ -182,15 +208,7 @@ function App() {
     }
   }, [imageBoard, imageLoaded])
 
-  useEffect(() => {
-    // Respect reduced motion preference: turn off continuous glitter by default (unless user has saved preference)
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const apply = (m) => { if (m.matches && !glitterPrefLoaded.current) setGlitterEnabled(false) }
-    apply(media)
-    const onChange = (e) => apply(e)
-    try { media.addEventListener('change', onChange) } catch { media.addListener(onChange) }
-    return () => { try { media.removeEventListener('change', onChange) } catch { media.removeListener(onChange) } }
-  }, [])
+  // Removed glitterEnabled reduced-motion auto-toggle effect
 
   useEffect(() => {
     // Load set overrides for this active workout
@@ -219,6 +237,38 @@ function App() {
       if (persistTimerRef.current) { clearTimeout(persistTimerRef.current); persistTimerRef.current = null }
     }
   }, [setOverrides, activeWorkout?.id])
+
+  useEffect(() => {
+    // Tick any running rest timers once per second
+    // Recreate interval whenever timers change state (simple and robust)
+    if (restIntervalRef.current) {
+      clearInterval(restIntervalRef.current)
+      restIntervalRef.current = null
+    }
+    const anyRunning = Object.values(restTimers || {}).some(t => t.running && t.remaining > 0)
+    if (!anyRunning) return
+    restIntervalRef.current = setInterval(() => {
+      setRestTimers(prev => {
+        let changed = false
+        const next = { ...prev }
+        for (const [weId, t] of Object.entries(prev)) {
+          if (t.running && t.remaining > 0) {
+            const rem = t.remaining - 1
+            next[weId] = { ...t, remaining: rem }
+            changed = true
+            if (rem === 0) {
+              // Auto-stop when rest completes
+              next[weId] = { ...t, remaining: 0, running: false }
+            }
+          }
+        }
+        return changed ? next : prev
+      })
+    }, 1000)
+    return () => {
+      if (restIntervalRef.current) { clearInterval(restIntervalRef.current); restIntervalRef.current = null }
+    }
+  }, [restTimers])
 
   useEffect(() => {
     // Fetch exercises on mount
@@ -418,6 +468,8 @@ function App() {
       })
       await response.json()
       setActiveWorkout(null)
+      // Clear any rest timers when ending workout
+      setRestTimers({})
     } catch (e) {
       console.error('Failed to end workout', e)
     }
@@ -461,7 +513,44 @@ function App() {
     setSetOverrides(prev => ({ ...prev, [setId]: { ...(prev[setId] || {}), ...patch } }))
   }
   const toggleSetDone = (setId) => {
-    setSetOverrides(prev => ({ ...prev, [setId]: { ...(prev[setId] || {}), done: !prev[setId]?.done } }))
+    setSetOverrides(prev => {
+      const newDone = !prev[setId]?.done
+      // If marking as done, auto-start a rest timer for the parent workout-exercise (if it has rest_time)
+      if (newDone && activeWorkout?.exercises?.length) {
+        try {
+          const we = activeWorkout.exercises.find(we => (we.sets || []).some(s => s.id === setId))
+          const setObj = we?.sets?.find(s => s.id === setId)
+          if (we && setObj) {
+            const sv = { ...setObj, ...(prev[setId] || {}) }
+            const sec = Number(sv.rest_time) || 0
+            if (sec > 0) {
+              setRestTimers(rt => ({ ...rt, [we.id]: { remaining: sec, total: sec, running: true } }))
+            }
+          }
+        } catch {}
+      }
+      return { ...prev, [setId]: { ...(prev[setId] || {}), done: newDone } }
+    })
+  }
+
+  const startRest = (weId, seconds) => {
+    const sec = Number(seconds) || 0
+    if (sec <= 0) return
+    setRestTimers(prev => ({ ...prev, [weId]: { remaining: sec, total: sec, running: true } }))
+  }
+  const stopRest = (weId) => {
+    setRestTimers(prev => {
+      const next = { ...prev }
+      delete next[weId]
+      return next
+    })
+  }
+  const resetRest = (weId) => {
+    setRestTimers(prev => {
+      const t = prev[weId]
+      if (!t) return prev
+      return { ...prev, [weId]: { ...t, remaining: t.total, running: false } }
+    })
   }
 
   const handleAddSet = async (we) => {
@@ -558,6 +647,8 @@ function App() {
         delete next[weId]
         return next
       })
+      // Remove any rest timer tied to this exercise
+      setRestTimers(prev => { const next = { ...prev }; delete next[weId]; return next })
     } catch (e) {
       console.error('Failed to delete workout exercise', e)
     }
@@ -745,6 +836,13 @@ function App() {
     try { return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) } catch { return '' }
   }
 
+  const formatTime = (sec) => {
+    const s = Math.max(0, Number(sec) || 0)
+    const m = Math.floor(s / 60)
+    const r = s % 60
+    return `${m}:${r.toString().padStart(2,'0')}`
+  }
+
   const closeImageModal = () => { setImageModalOpen(false); setSelectedImage(null) }
 
   const filteredExercises = useMemo(() => {
@@ -843,36 +941,7 @@ function App() {
     return Math.round(bw * pf)
   }, [calc])
 
-  const spawnParticles = (n = 32) => {
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    const amount = reduce ? Math.min(n, 8) : Math.min(n, 24)
-    const created = []
-    setParticles(prev => {
-      const next = [...prev]
-      const maxParticles = 60
-      const over = Math.max(0, next.length + amount - maxParticles)
-      if (over > 0) next.splice(0, over)
-      for (let i = 0; i < amount; i++) {
-        const id = particleSeq.current++
-        const glyphs = ['✦','★','✧','♥']
-        const glyph = glyphs[Math.floor(Math.random() * glyphs.length)]
-        next.push({
-          id,
-          glyph,
-          left: Math.random() * 100,
-          size: 10 + Math.round(Math.random() * 10),
-          duration: 1.4 + Math.random() * 1.2,
-          color: Math.random() < 0.5 ? 'text-pink-200' : 'text-purple-200',
-          kind: Math.random() < 0.5 ? 'burst' : 'drift',
-        })
-        created.push(id)
-      }
-      return next
-    })
-    setTimeout(() => {
-      setParticles(prev => prev.filter(p => !created.includes(p.id)))
-    }, 2000)
-  }
+  // Removed particle spawn function
 
   const getMuscleGroupIcon = (group) => {
     const icons = {
@@ -941,51 +1010,7 @@ function App() {
     return () => window.removeEventListener('hashchange', handle)
   }, [pastWorkouts, activeWorkout, workoutModalOpen, selectedWorkout])
 
-  useEffect(() => {
-    // Cursor trail effect with better DOM management
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-
-    let rafId = 0
-
-    const handleMouseMove = (e) => {
-      // Throttle trail creation more aggressively
-      if (Math.random() > 0.7) return // Only create trail ~30% of the time
-
-      const trail = document.createElement('div')
-      trail.className = 'cursor-trail'
-      trail.style.left = (e.clientX + 6) + 'px'
-      trail.style.top = (e.clientY + 6) + 'px'
-      trail.style.pointerEvents = 'none'
-
-      // Use document fragment for better performance
-      const fragment = document.createDocumentFragment()
-      fragment.appendChild(trail)
-      document.body.appendChild(fragment)
-
-      // Aggressive cleanup to avoid DOM build-up
-      setTimeout(() => {
-        if (trail && trail.parentNode === document.body) {
-          try {
-            document.body.removeChild(trail)
-          } catch {}
-        }
-      }, 400)
-    }
-
-    const onMove = (e) => {
-      if (rafId) return
-      rafId = requestAnimationFrame(() => {
-        handleMouseMove(e)
-        rafId = 0
-      })
-    }
-
-    document.addEventListener('mousemove', onMove, { passive: true })
-    return () => {
-      document.removeEventListener('mousemove', onMove)
-      if (rafId) cancelAnimationFrame(rafId)
-    }
-  }, [])
+  // Removed cursor trail effect
 
   const isAuthed = Boolean(authToken && user)
 
@@ -1055,43 +1080,33 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 bg-decora">
-      {/* Decora Floating Icons */}
+    <div className={`min-h-screen relative overflow-hidden bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 bg-decora ${customCursor === 'heart' ? 'cursor-heart' : customCursor === 'star' ? 'cursor-star' : ''}`}>
+      {/* Decora Floating Icons (always on) */}
       <div aria-hidden className="decora-overlay pointer-events-none absolute inset-0 z-0">
         <span className="iconify-inline text-pink-300" data-icon="lucide:heart" data-width="22" style={{ top: '8%', left: '6%' }}></span>
         <span className="iconify-inline text-purple-300" data-icon="lucide:sparkles" data-width="28" style={{ top: '16%', right: '8%' }}></span>
         <span className="iconify-inline text-pink-300" data-icon="lucide:star" data-width="18" style={{ bottom: '12%', left: '10%' }}></span>
         <span className="iconify-inline text-rose-300" data-icon="lucide:heart" data-width="20" style={{ bottom: '18%', right: '12%' }}></span>
       </div>
-      {/* Continuous Glitter Starfall */}
-      {glitterEnabled && (
-        <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
-          {glitterItems.map((g) => (
-            <span
-              key={g.id}
-              className={`${g.color} glitter-item${g.isAlt ? ' alt' : ''}`}
-              style={{ left: `${g.left}%`, fontSize: `${g.size}px`, animationDuration: `${g.duration}s`, animationDelay: `${g.delay}s` }}
-              aria-hidden="true"
-            >{g.glyph}</span>
-          ))}
-        </div>
+      {/* Scanline Overlay */}
+      {scanlineOverlay && (
+        <div aria-hidden className="scanline-overlay pointer-events-none absolute inset-0 z-5"></div>
       )}
-      {/* Particle Host */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 z-20">
-        {particles.map((p) => (
+      {/* Continuous Glitter Starfall */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
+        {glitterItems.map((g) => (
           <span
-            key={p.id}
-            className={`particle ${p.kind} ${p.color}`}
+            key={g.id}
+            className={`${g.color} glitter-item${g.isAlt ? ' alt' : ''}`}
             style={{
-              left: `${p.left}%`,
-              bottom: '8px',
-              fontSize: `${p.size}px`,
-              animationDuration: p.kind === 'drift'
-                ? `${p.duration}s, ${Math.max(0.8, p.duration * 0.6)}s`
-                : `${p.duration}s`
+              left: `${g.left}%`,
+              fontSize: `${g.size}px`,
+              animationDuration: `${g.duration}s`,
+              animationDelay: `${g.delay}s`,
             }}
-            aria-hidden="true"
-          >{p.glyph}</span>
+          >
+            {g.glyph}
+          </span>
         ))}
       </div>
       {/* Header */}
@@ -1117,6 +1132,9 @@ function App() {
                 placeholder="Workout name"
                 className="hidden md:block mr-3 rounded-md border border-pink-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-pink-300 bg-white/80"
               />
+              <Button size="sm" variant="outline" className="mr-2 border-pink-200" title="Compact mode">
+                Compact (coming soon)
+              </Button>
               <Button
                 onClick={activeWorkout ? handleEndWorkout : handleStartWorkout}
                 disabled={starting}
@@ -1138,6 +1156,34 @@ function App() {
           </div>
         </div>
       </header>
+
+      {/* Marquee Header Bar (always on) */}
+      <div className="marquee-bar border-b border-pink-100">
+        <div className="container mx-auto px-2">
+          <div className="marquee-track">
+            <div className="marquee-segment">
+                <span className="iconify-inline text-pink-500" data-icon="lucide:heart" data-width="16"></span>
+                <span className="text-sm text-rose-600">Welcome, {user?.username || 'Magical Girl'}!</span>
+                <span className="text-rose-300">•</span>
+                <span className="iconify-inline text-purple-500" data-icon="lucide:star" data-width="16"></span>
+                <span className="text-sm text-purple-700">Current workout: {activeWorkout?.name || workoutName || '—'}</span>
+                <span className="text-rose-300">•</span>
+                <span className="iconify-inline text-pink-500" data-icon="lucide:sparkles" data-width="16"></span>
+                <span className="text-sm text-pink-700">Remember to hydrate and sparkle!</span>
+            </div>
+            <div className="marquee-segment">
+                <span className="iconify-inline text-pink-500" data-icon="lucide:heart" data-width="16"></span>
+                <span className="text-sm text-rose-600">Welcome, {user?.username || 'Magical Girl'}!</span>
+                <span className="text-rose-300">•</span>
+                <span className="iconify-inline text-purple-500" data-icon="lucide:star" data-width="16"></span>
+                <span className="text-sm text-purple-700">Current workout: {activeWorkout?.name || workoutName || '—'}</span>
+                <span className="text-rose-300">•</span>
+                <span className="iconify-inline text-pink-500" data-icon="lucide:sparkles" data-width="16"></span>
+                <span className="text-sm text-pink-700">Remember to hydrate and sparkle!</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Main Content */}
       <main className="relative z-10 container mx-auto px-4 py-8">
@@ -1174,38 +1220,6 @@ function App() {
                 <li>100 push-ups across the day</li>
                 <li>10k steps sparkle walk</li>
               </ul>
-
-              {/* Sparkle Machine */}
-              <div className="mt-2 p-3 rounded-lg bg-pink-50 border border-pink-200">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="hl-cherry text-pink-600">Sparkle Machine</span>
-                  <span className="iconify-inline text-pink-400" data-icon="lucide:sparkles" data-width="18"></span>
-                </div>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  <Button size="sm" onClick={() => spawnParticles(12)} className="bg-gradient-to-r from-pink-400 to-purple-500 hover:from-pink-500 hover:to-purple-600">x12</Button>
-                  <Button size="sm" variant="outline" onClick={() => spawnParticles(20)} className="border-pink-200">x20</Button>
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="text-xs text-pink-600">Intensity</label>
-                  <input
-                    type="range"
-                    min="8"
-                    max="80"
-                    step="4"
-                    value={glitterCount}
-                    onChange={(e) => setGlitterCount(Number(e.target.value))}
-                    className="flex-1 accent-pink-500"
-                    aria-label="Glitter intensity"
-                  />
-                  <span className="text-xs text-gray-600 w-6 text-right">{glitterCount}</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setGlitterEnabled(v => !v)} className="border-pink-200">
-                    {glitterEnabled ? 'Disable Glitter' : 'Enable Glitter'}
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setParticles([])} className="border-pink-200">Clear</Button>
-                </div>
-              </div>
 
               {/* Image Board */}
               <div className="mt-3 p-3 rounded-lg bg-pink-50 border border-pink-200">
@@ -1359,6 +1373,18 @@ function App() {
                               <Button size="sm" variant="outline" onClick={() => handleDeleteWorkoutExercise(we.id)} className="border-pink-200 text-red-600">Delete</Button>
                             </div>
                           </div>
+                          {restTimers[we.id]?.total ? (
+                            <div className="mt-2 flex items-center justify-between text-xs">
+                              <div className="text-pink-700 font-medium">Rest: {formatTime(restTimers[we.id]?.remaining)} / {formatTime(restTimers[we.id]?.total)}</div>
+                              <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" onClick={() => setRestTimers(prev => ({ ...prev, [we.id]: { ...(prev[we.id] || {}), running: !(prev[we.id]?.running) } }))} className="border-pink-200">
+                                  {restTimers[we.id]?.running ? 'Pause' : 'Resume'}
+                                </Button>
+                                <Button size="sm" variant="outline" onClick={() => resetRest(we.id)} className="border-pink-200">Reset</Button>
+                                <Button size="sm" variant="outline" onClick={() => stopRest(we.id)} className="border-pink-200">Stop</Button>
+                              </div>
+                            </div>
+                          ) : null}
                           <div className="mt-2 grid grid-cols-1 md:grid-cols-6 gap-2 items-end">
                             {getAllowedFieldsForExercise(we).includes('reps') && (
                               <div>
@@ -1389,6 +1415,7 @@ function App() {
                               <div className="flex items-center gap-2">
                                 <input type="number" min="0" value={setInputs[we.id]?.rest_time || ''} onChange={(e)=>updateSetInput(we.id,{ rest_time: e.target.value })} className="w-full rounded-md border border-pink-200 px-2 py-1 text-sm bg-white/80" />
                                 <Button size="sm" onClick={() => handleAddSet(we)} className="bg-gradient-to-r from-pink-400 to-purple-500 hover:from-pink-500 hover:to-purple-600">Add Set</Button>
+                                <Button size="sm" variant="outline" onClick={() => startRest(we.id, setInputs[we.id]?.rest_time)} className="border-pink-200">Start Rest</Button>
                               </div>
                             </div>
                           </div>
@@ -1727,18 +1754,38 @@ function App() {
                 <div className="text-sm">Target: <span className="font-bold text-pink-600">{proteinGrams || 0} g/day</span></div>
               </div>
 
-              {/* Animation Playground */}
+              {/* Decora Effects (always visible) */}
               <div className="border-t border-pink-100 pt-3 mt-3">
-                <h5 className="headline-wacky text-lg mb-2">Animation Playground</h5>
-                <div className="flex flex-wrap gap-2">
-                  <Button size="sm" onClick={() => spawnParticles(16)} className="bg-gradient-to-r from-pink-400 to-purple-500 hover:from-pink-500 hover:to-purple-600">
-                    <Sparkles className="h-4 w-4 mr-1" /> Twinkle
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => spawnParticles(32)} className="border-pink-200">
-                    <Star className="h-4 w-4 mr-1" /> Starfall
-                  </Button>
+                <h5 className="headline-wacky text-lg mb-2">Decora Effects</h5>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-600">Custom Cursor</span>
+                    <select 
+                      value={customCursor} 
+                      onChange={(e) => setCustomCursor(e.target.value)}
+                      className="text-xs rounded border border-pink-200 px-2 py-1 bg-white/80"
+                    >
+                      <option value="default">Default</option>
+                      <option value="heart">💖 Heart</option>
+                      <option value="star">⭐ Star</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-600">Scanlines</span>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      aria-pressed={scanlineOverlay}
+                      onClick={() => setScanlineOverlay(v => !v)} 
+                      className={`border-pink-200 text-xs ${scanlineOverlay ? 'bg-pink-100' : ''}`}
+                    >
+                      {scanlineOverlay ? 'On' : 'Off'}
+                    </Button>
+                  </div>
                 </div>
               </div>
+
+
             </div>
           </aside>
         </div>

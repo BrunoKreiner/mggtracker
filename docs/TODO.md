@@ -47,7 +47,7 @@ This comprehensive TODO list outlines all the features and tasks needed to build
 ### 2.2 Workout Logging
 - [x] Create workout session start/end functionality
 - [x] Implement set, rep, and weight logging
-- [ ] Add rest timer between sets
+- [x] Add rest timer between sets
 - [ ] Support different set types (regular, superset, dropset)
 - [ ] Create workout templates and routines
 - [x] Implement workout history and logs
@@ -85,6 +85,15 @@ This comprehensive TODO list outlines all the features and tasks needed to build
 - [ ] Add light narrative elements
 - [ ] Implement visual novel-style cutscenes
 - [ ] Create seasonal events and themes
+
+### 3.4 Decora-kei Enhancements (UI polish)
+- [x] CSS groundwork for marquee bar, scanline overlay, sticker belts, 88x31 button belt, and custom cursors (`frontend/magical-girl-gym-tracker-frontend/src/App.css`)
+- [x] Marquee Header below main header is now ALWAYS visible; respects reduced-motion (animation pauses) (`frontend/magical-girl-gym-tracker-frontend/src/App.jsx`)
+- [x] Removed Chaos Mode and all non-working features (Sparkle Machine, Animation Playground, particles) for stability and performance
+- [x] Global custom cursor toggle (heart/star/default) with localStorage persistence and reduced-motion respect (kept)
+- [x] Scanline overlay layer behind content; toggleable and disabled when prefers-reduced-motion (kept)
+- [ ] Sticker belts on left/right sidebars using existing sticker assets; persist visibility/order per user
+- [ ] 88x31 button belt near footer; allow user to enable/disable; persist per user
 
 ## Phase 4: Advanced Features 🌟 (MEDIUM PRIORITY)
 
@@ -196,8 +205,8 @@ This comprehensive TODO list outlines all the features and tasks needed to build
 ~~5. Gate the entire app behind a full-screen Login/Register until authenticated.~~ ✅ **COMPLETED**
 ~~6. Exercise Grid: show an empty-state when no exercises match filters/search.~~ ✅ **COMPLETED**
 
-1. Responsive testing and performance check (FPS, DOM node count) on desktop and mobile.
-2. Add "Delete Exercise" and "Delete Set" in Active Workout UI and test end-to-end.
+1. Responsive testing and performance check (FPS, DOM node count) on desktop and mobile for the simplified, always-on decora UI.
+~~2. Add "Delete Exercise" and "Delete Set" in Active Workout UI and test end-to-end.~~ ✅ **COMPLETED**
 3. Verify difficulty mapping from Free Exercise DB and display a difficulty badge in the UI.
 4. Seed the database using the Free Exercise DB importer (one-time per environment).
 
@@ -211,18 +220,6 @@ This comprehensive TODO list outlines all the features and tasks needed to build
      $count = (Invoke-RestMethod http://localhost:5000/api/exercises).Count
      Write-Host "Imported $count exercises."
      ```
-     Verify a specific exercise:
-     ```powershell
-     $exercise = Invoke-RestMethod http://localhost:5000/api/exercises/1
-     Write-Host "Exercise 1: $($exercise.name)"
-     ```
-   - Note: Do NOT run this on production. We'll add a production-safe importer that only inserts if empty.
-~~5. Harden authentication (input validation, duplicate email checks, error handling).~~ ✅ **COMPLETED**
-~~6. Backend deployment readiness: DATABASE_URL support, Postgres dependencies, production-safe seeding.~~ ✅ **COMPLETED**
-~~7. Frontend deployment readiness: VITE_API_URL environment variable configuration.~~ ✅ **COMPLETED**
-8. Add a rest timer between sets.
-
-### Deployment (Vercel) - Split Project Approach
 - [x] **FIXED**: Split into separate Vercel projects instead of monorepo approach
   - **Frontend Project**: Deploy `frontend/magical-girl-gym-tracker-frontend/` as separate Vite project
     - Framework auto-detection works properly
@@ -242,6 +239,7 @@ This comprehensive TODO list outlines all the features and tasks needed to build
   - [ ] **Environment Variables**:
     - Frontend: Set `VITE_API_URL=https://your-backend-project.vercel.app` (no trailing slash)
     - Backend: Set `DATABASE_URL` for Neon database connection
+    - Backend (seeding): Optionally set `AUTO_SEED_IF_EMPTY=true` to auto-import the full exercise dataset on empty databases.
   - [ ] **Post-deploy checks**:
     - Frontend: `GET /` loads index.html and `/assets/*` serve properly
     - Backend: `GET /api/exercises` returns JSON (200)
@@ -268,3 +266,11 @@ This comprehensive TODO list outlines all the features and tasks needed to build
 - 💎 **LOW PRIORITY**: Nice-to-have features for future updates
 
 This TODO list will be updated as development progresses and new requirements emerge.
+
+---
+
+### Cross-Project Ops Note (2025-08-19)
+- Table Tennis League App: Deployment docs switched to Vercel-only.
+  - Frontend: Vite SPA with `frontend/vercel.json` (rewrite to `/index.html`).
+  - Backend: Express exported as Vercel Function via `backend/api/index.js` with `backend/vercel.json` routes.
+  - Env: Frontend `VITE_API_URL`, Backend `FRONTEND_URL`, `DATABASE_URL` (Vercel Postgres).

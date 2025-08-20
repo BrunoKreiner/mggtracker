@@ -78,6 +78,12 @@
 - Active workout persists via localStorage; ongoing backend session is auto-restored.
 - Past Workouts section lists sessions and set counts.
 - "End Workout" refreshes history after closing a session.
+ - Delete actions added: per-exercise "Delete" and per-set "Delete" in Active Workout UI.
+ - Rest Timer (per exercise):
+   - Auto-starts when a set is marked done, using that set's `rest_time` seconds.
+   - Displays countdown and total; Pause/Resume, Reset, and Stop controls.
+   - Manual "Start Rest" available next to the Rest (s) input.
+   - Cleans up when ending workout or deleting the exercise.
 
 ### 7. Data Integration: Free Exercise DB
 - Added resilient importer script: `src/scripts/import_free_exercise_db.py`
@@ -94,6 +100,35 @@
 - Added JP fonts via Google Fonts: Noto Sans JP, Zen Maru Gothic.
 - Layering/z-index tweaks so main content sits above decorative overlay; overlay is pointer-events-none.
 - Performance: debounced localStorage writes for set overrides and memoized filtered lists to reduce UI latency.
+
+#### New: Decora-kei CSS groundwork and Marquee Header
+- CSS scaffolding added in `frontend/magical-girl-gym-tracker-frontend/src/App.css` for:
+  - `marquee-bar`, `marquee-track`, `marquee-segment` with `marquee-scroll` keyframes
+  - scanline overlay, sticker belts, 88x31 button belt, and custom cursors (heart/star)
+  - Respects `prefers-reduced-motion`: marquee animation disabled when user prefers reduced motion
+- Marquee Header component added in `frontend/magical-girl-gym-tracker-frontend/src/App.jsx` directly below the main header:
+  - Duplicated segments for seamless scroll; pause on hover
+  - Always visible; respects `prefers-reduced-motion` (animation pauses when reduced motion is on)
+  - Small "Compact (coming soon)" button in the header replaced the old marquee toggle
+  - Content shows welcome/user, current workout name, and hydration reminder
+
+### 11. Chaos Mode Removal & UI Simplification
+- Removed Chaos Mode and all non-working/beta features (Sparkle Machine, Animation Playground, particle spawns)
+- Marquee header and decorative overlays are always rendered for a consistent theme
+- Retained only useful, stable toggles: Custom Cursor and Scanline Overlay (persisted per user)
+- Added a small "Compact (coming soon)" button in the header as a placeholder for future layout toggle
+- Result: simpler, more performant, and stable UI without clutter or hidden states
+
+### 12. Additional Decora-kei Features
+- **Custom Cursor System**: Implemented heart and star cursor options with per-user localStorage persistence
+  - Dropdown selector in "Decora Effects" section (always visible)
+  - CSS cursor definitions using SVG data URLs for heart (pink) and star (purple) cursors
+  - Applied to entire app container for consistent cursor experience
+- **Scanline Overlay**: Added retro CRT-style scanline effect
+  - Toggleable via "Decora Effects" section (always visible)
+  - Respects `prefers-reduced-motion` preference (disabled by default for accessibility)
+  - CSS uses repeating linear gradient for authentic scanline appearance
+  - Positioned with proper z-index layering to overlay content subtly
 
 ### 9. Image Board & Profile Picture System
 - **Image Board**: Implemented local filesystem image uploads with data URL persistence in localStorage under key `imageBoard`
@@ -134,10 +169,10 @@ The project now has a solid foundation with:
 
 ## Next Immediate Steps 
 1. **Deploy using split-project approach**: Create separate Vercel projects for frontend and backend
-2. Add "Delete Exercise" and "Delete Set" in Active Workout UI and test end-to-end.
+2. (Done) Add "Delete Exercise" and "Delete Set" in Active Workout UI and test end-to-end.
 3. Remove the `difficulty` column from the backend database (migration) and clean API responses.
 4. Seed the database using the Free Exercise DB importer (one-time per environment).
-5. Add a rest timer between sets and support set types (warmup, dropset, superset).
+5. (Rest timer done) Add support for set types (warmup, dropset, superset).
 
 ## How to Get Started 
 
@@ -192,6 +227,7 @@ The development environment is now ready for your girlfriend to start building h
 - __Environment Variables__:
   - Frontend: `VITE_API_URL=https://backend-project-name.vercel.app` (no trailing slash)
   - Backend: `DATABASE_URL` for Neon database connection
+  - Backend (seeding): `AUTO_SEED_IF_EMPTY` (true/false). When true and the database has 0 exercises, the backend auto-imports the vendored Free Exercise DB on first cold start.
 - __Benefits__:
   - Proper framework detection per project
   - Independent deployments and scaling
@@ -203,6 +239,29 @@ The development environment is now ready for your girlfriend to start building h
   - Updated `frontend/magical-girl-gym-tracker-frontend/.env.example`
   - Removed root `vercel.json` to prevent conflicts
 
+### New (2025-08-20): Neon Production Auto-Seeding
+- Backend logic updated in `api/src/main.py`:
+  - Default user and 10 basic exercises now seed only when using local SQLite (no DATABASE_URL) to avoid polluting production data.
+  - When running on Postgres/Neon (DATABASE_URL present) and `AUTO_SEED_IF_EMPTY=true`, the app checks `Exercise` count and, if zero, imports ALL exercises from `api/src/data/free-exercise-db/exercises.json` via `src/scripts/import_free_exercise_db.py`.
+- How to reset and seed Neon:
+  1. In Neon Console, run one of the following resets:
+     - Drop schema (simplest):
+       ```sql
+       DROP SCHEMA IF EXISTS public CASCADE;
+       CREATE SCHEMA public;
+       GRANT ALL ON SCHEMA public TO PUBLIC;
+       ```
+     - Or drop tables (quoted for reserved name):
+       ```sql
+       DROP TABLE IF EXISTS exercise_set, workout_exercise, personal_record, workout_session, exercise, "user" CASCADE;
+       ```
+  2. In Vercel (Backend project, root `api`), set env vars:
+     - `DATABASE_URL` = Neon connection string
+     - `AUTO_SEED_IF_EMPTY` = `true`
+  3. Redeploy backend. First cold start will create tables and auto-import ~800+ exercises.
+  4. Hit `GET https://<backend>.vercel.app/api/exercises` to trigger and verify.
+  5. Optional: remove or set `AUTO_SEED_IF_EMPTY=false` after successful import.
+
 ### Git History Cleanup (2025-08-19)
 - Squashed the last 21 noisy "debug Vercel" commits into a single clean commit summarizing:
   - Split vercel.json into frontend and backend projects
@@ -210,3 +269,6 @@ The development environment is now ready for your girlfriend to start building h
   - Ensured `api/requirements.txt` and routes config
   - Updated docs and CORS notes
   - Created backup branch `backup/pre-squash-20250819-0009` for safety
+
+### Cross-Project Ops Note (2025-08-19)
+- Table Tennis League App: Deployment guide updated to Vercel-only (frontend Vite SPA + backend Express as Vercel Function + Vercel Postgres). Backend guarded from listening on Vercel and exposes `api/index.js`. Frontend `vercel.json` uses SPA rewrite to `/index.html`.
